@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PetFlow Pro 2.0 • Gestão, PDV & CRM Pet</title>
+    <meta name="theme-color" content="#6d28d9">
+    <meta name="description" content="PetFlow Pro 2.0 - Gestão, PDV, estoque, financeiro, CRM pet e PIX.">
+    <link rel="manifest" href="manifest.json">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            200: '#ddd6fe',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                            800: '#5b21b6',
+                            900: '#4c1d95',
+                            950: '#2e1065'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- QR Code para pagamentos PIX -->
+    <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; }
+        .custom-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .status-dot { width:8px;height:8px;border-radius:9999px;display:inline-block; }
+        .offline-banner { display:none; }
+        body.offline .offline-banner { display:block; }
+        @media print {
+            body * { visibility: hidden; }
+            #printableReceipt, #printableReceipt * { visibility: visible; }
+            #printableReceipt { position: absolute; left: 0; top: 0; width: 100%; }
+        }
+    </style>
+</head>
+<body class="h-full bg-slate-50 text-slate-900 antialiased overflow-hidden">
+    <div class="offline-banner fixed bottom-3 left-1/2 -translate-x-1/2 z-[9999] bg-amber-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg">⚠️ Modo offline: dados locais continuam disponíveis.</div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toastContainer" class="fixed top-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- ========================================== -->
+    <!-- 1. TELA DE LOGIN SOFISTICADA -->
+    <!-- ========================================== -->
+    <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950 p-4 overflow-hidden transition-all duration-500">
+        <!-- Blobs decorativos de fundo -->
+        <div class="absolute -top-40 -left-40 w-96 h-96 bg-brand-600/30 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="relative w-full max-w-md bg-slate-900/90 border border-slate-800 backdrop-blur-2xl rounded-3xl p-8 sm:p-10 shadow-2xl text-white">
+            <div class="flex items-center gap-3 mb-8">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-2xl shadow-lg shadow-brand-500/30">
+                    🐾
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                        PetFlow <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30">PRO</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Sistema Integrado de Gestão & PDV</p>
+                </div>
+            </div>
+
+            <form onsubmit="handleAuth(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Usuário / Operador</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500 text-sm">👤</span>
+                        <input id="authLogin" type="text" value="admin" required
+                               class="w-full bg-slate-800/80 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition">
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1.5">
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Senha de Acesso</label>
+                        <span class="text-[11px] text-brand-400 cursor-pointer hover:underline" onclick="fillDemoCredentials()">Preencher demo</span>
+                    </div>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500 text-sm">🔒</span>
+                        <input id="authPass" type="password" value="123456" required
+                               class="w-full bg-slate-800/80 border border-slate-700 rounded-xl py-3 pl-10 pr-10 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition">
+                        <button type="button" onclick="togglePassVisibility()" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 text-xs">👁️</button>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between text-xs text-slate-400 pt-1">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked class="rounded border-slate-700 text-brand-600 focus:ring-0 bg-slate-800">
+                        <span>Lembrar meu terminal</span>
+                    </label>
+                    <span class="hover:text-slate-300 cursor-pointer">Caixa #01</span>
+                </div>
+
+                <button type="submit" 
+                        class="w-full py-3.5 mt-2 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-brand-600/30 active:scale-[0.99] transition duration-150">
+                    Iniciar Turno de Trabalho
+                </button>
+            </form>
+
+            <div class="mt-8 pt-5 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500">
+                <span>Versão 4.0.0-PetFlow-2.0</span>
+                <span class="inline-flex items-center gap-1 text-emerald-400 font-medium">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> Servidor Online
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 2. LAYOUT PRINCIPAL (APP CONTAINER) -->
+    <!-- ========================================== -->
+    <div id="mainApp" class="h-full flex flex-col lg:flex-row overflow-hidden">
+
+        <!-- BACKDROP MOBILE SIDEBAR -->
+        <div id="sidebarBackdrop" onclick="toggleMobileMenu()" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-30 hidden lg:hidden"></div>
+
+        <!-- SIDEBAR NAVEGAÇÃO -->
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 text-slate-300 flex flex-col justify-between border-r border-slate-800 transition-transform duration-300 -translate-x-full lg:translate-x-0 lg:static">
+            <div>
+                <!-- Brand Header -->
+                <div class="p-6 border-b border-slate-800/80 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center text-lg text-white shadow-md shadow-brand-600/40">🐾</div>
+                        <div>
+                            <span class="font-extrabold text-base tracking-tight text-white block leading-tight">PetFlow Pro</span>
+                            <span class="text-[10px] uppercase font-bold tracking-widest text-brand-400">Móvel & Balcão</span>
+                        </div>
+                    </div>
+                    <button onclick="toggleMobileMenu()" class="lg:hidden text-slate-400 hover:text-white text-lg">✕</button>
+                </div>
+
+                <!-- Navigation Links -->
+                <nav class="p-4 space-y-1 text-sm font-medium">
+                    <button onclick="switchView('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition">
+                        <span class="text-base">📊</span> <span>Dashboard Geral</span>
+                    </button>
+                    <button onclick="switchView('pdv')" id="nav-pdv" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition">
+                        <span class="text-base">⚡</span> <span>Caixa / PDV Rápido</span>
+                    </button>
+                    <button onclick="switchView('caixa')" id="nav-caixa" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition">
+                        <span class="text-base">💰</span> <span>Caixa & Fechamento</span>
+                    </button>
+                    <button onclick="switchView('estoque')" id="nav-estoque" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition">
+                        <span class="text-base">📦</span> <span>Estoque & Produtos</span>
+                    </button>
+                    <button onclick="switchView('banho')" id="nav-banho" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition">
+                        <span class="text-base">🛁</span> <span>Banho, Tosa & Fila</span>
+                    </button>
+                    <button onclick="switchView('clientes')" id="nav-clientes" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition">
+                        <span class="text-base">🐶</span> <span>Tutores & Pets (CRM)</span>
+                    </button>
+                    <button onclick="switchView('relatorios')" id="nav-relatorios" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition">
+                        <span class="text-base">📈</span> <span>Financeiro & DRE</span>
+                    </button>
+                    <button onclick="switchView('config')" id="nav-config" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition">
+                        <span class="text-base">⚙️</span> <span>Ajustes & Dados</span>
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Operador Footer -->
+            <div class="p-4 border-t border-slate-800/80">
+                <div class="bg-slate-800/50 rounded-2xl p-3 flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/40 flex items-center justify-center font-bold text-xs">AD</div>
+                        <div class="overflow-hidden">
+                            <span class="block text-xs font-semibold text-white truncate" id="sessionUserName">Admin Geral</span>
+                            <span class="text-[10px] text-emerald-400 font-medium">Turno Aberto</span>
+                        </div>
+                    </div>
+                    <button onclick="logout()" title="Encerrar Sessão" class="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition">
+                        🚪
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ÁREA PRINCIPAL COM SCROLL PRÓPRIO -->
+        <div class="flex-1 flex flex-col h-full overflow-hidden">
+            
+            <!-- TOPBAR GLOBAL -->
+            <header class="h-16 border-b border-slate-200/80 bg-white/90 backdrop-blur-md px-6 flex items-center justify-between shrink-0 z-10">
+                <div class="flex items-center gap-4">
+                    <button onclick="toggleMobileMenu()" class="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg text-lg">☰</button>
+                    <div>
+                        <h2 id="currentViewTitle" class="text-lg font-bold text-slate-900 leading-tight">Painel de Gestão</h2>
+                        <span id="currentViewSubtitle" class="text-xs text-slate-400 hidden sm:inline">Visão unificada das operações de hoje</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <div class="hidden sm:flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full text-xs font-medium text-slate-600">
+                        <span id="clockDisplay">12:00:00</span>
+                    </div>
+                    <button onclick="switchView('pdv')" class="bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm shadow-brand-500/20 transition">
+                        <span>⚡</span> <span class="hidden md:inline">Nova Venda (F2)</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- CONTAINER DE VIEWS -->
+            <main class="flex-1 overflow-y-auto custom-scroll p-5 sm:p-7 space-y-6">
+
+                <!-- VIEW 1: DASHBOARD -->
+                <section id="view-dashboard" class="space-y-6">
+                    <!-- Cards de KPI -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+                            <div>
+                                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Faturado Hoje</span>
+                                <h3 id="dashTotalToday" class="text-2xl font-black text-slate-900 mt-1">R$ 0,00</h3>
+                                <span class="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-0.5">↑ 14.8% vs. ontem</span>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">💰</div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+                            <div>
+                                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Vendas do Turno</span>
+                                <h3 id="dashSalesCount" class="text-2xl font-black text-slate-900 mt-1">0</h3>
+                                <span class="text-[11px] text-slate-400 mt-0.5">Tickets emitidos</span>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-violet-50 text-brand-600 flex items-center justify-center text-xl">🛒</div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+                            <div>
+                                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Banho & Tosa Hoje</span>
+                                <h3 id="dashAppointmentsCount" class="text-2xl font-black text-slate-900 mt-1">0</h3>
+                                <span id="dashPendingAppointments" class="text-[11px] text-amber-600 font-semibold mt-0.5">0 aguardando</span>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl">🛁</div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+                            <div>
+                                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Alertas de Estoque</span>
+                                <h3 id="dashLowStockCount" class="text-2xl font-black text-rose-600 mt-1">0</h3>
+                                <span class="text-[11px] text-rose-500 font-semibold mt-0.5">Itens em nível crítico</span>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl">⚠️</div>
+                        </div>
+                    </div>
+
+                    <!-- Gráficos & Feeds -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
+                            <div class="flex items-center justify-between mb-4">
+                                <div>
+                                    <h4 class="font-bold text-sm text-slate-800">Faturamento da Semana</h4>
+                                    <p class="text-xs text-slate-400">Receita total consolidada por dia</p>
+                                </div>
+                                <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600">7 dias</span>
+                            </div>
+                            <div class="h-64">
+                                <canvas id="chartWeeklySales"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+                            <div>
+                                <h4 class="font-bold text-sm text-slate-800 mb-1">Últimas Transações</h4>
+                                <p class="text-xs text-slate-400 mb-4">Fechamento do caixa ao vivo</p>
+                                <div id="dashRecentSalesList" class="space-y-3">
+                                    <!-- Injetado via JS -->
+                                </div>
+                            </div>
+                            <button onclick="switchView('pdv')" class="mt-4 w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">
+                                Ver todas as operações →
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW 2: PDV / CAIXA RÁPIDO -->
+                <section id="view-pdv" class="hidden h-full flex flex-col space-y-4">
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                        
+                        <!-- Catálogo & Busca (Esquerda) -->
+                        <div class="lg:col-span-7 space-y-4">
+                            <!-- Filtros e Barra de Código de Barras -->
+                            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row gap-3">
+                                <div class="relative flex-1">
+                                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">🔍</span>
+                                    <input id="pdvSearchInput" oninput="renderPdvProducts()" type="text" placeholder="Nome do produto ou código de barras..."
+                                           class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                                </div>
+                                <select id="pdvCategoryFilter" onchange="renderPdvProducts()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-700 focus:outline-none">
+                                    <option value="todos">Todas Categorias</option>
+                                    <option value="ração">Rações & Alimentos</option>
+                                    <option value="petisco">Petiscos</option>
+                                    <option value="farmacia">Medicamentos / Farmácia</option>
+                                    <option value="higiene">Higiene & Estética</option>
+                                    <option value="brinquedos">Acessórios / Brinquedos</option>
+                                </select>
+                            </div>
+
+                            <!-- Grade de Produtos -->
+                            <div id="pdvProductsGrid" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 max-h-[560px] overflow-y-auto custom-scroll pr-1">
+                                <!-- Cards preenchidos dinamicamente -->
+                            </div>
+                        </div>
+
+                        <!-- Painel do Carrinho e Fechamento (Direita) -->
+                        <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 flex flex-col h-full">
+                            <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xl">🛍️</span>
+                                    <div>
+                                        <h3 class="font-bold text-sm text-slate-800 leading-tight">Carrinho de Compras</h3>
+                                        <span id="posTicketId" class="text-[10px] text-slate-400">Venda #1001</span>
+                                    </div>
+                                </div>
+                                <button onclick="clearCart()" class="text-xs font-semibold text-rose-500 hover:text-rose-700 hover:underline">
+                                    Esvaziar
+                                </button>
+                            </div>
+
+                            <!-- Lista de itens do carrinho -->
+                            <div id="cartItemsContainer" class="flex-1 space-y-2.5 max-h-[320px] overflow-y-auto custom-scroll pr-1">
+                                <!-- Vazio ou Itens -->
+                            </div>
+
+                            <!-- Resumo e Formas de Pagamento -->
+                            <div class="border-t border-slate-100 pt-4 mt-4 space-y-3">
+                                <div class="space-y-1.5 text-xs text-slate-600">
+                                    <div class="flex justify-between">
+                                        <span>Subtotal dos itens</span>
+                                        <span id="cartSubtotal" class="font-semibold text-slate-800">R$ 0,00</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span>Desconto (R$)</span>
+                                        <input id="cartDiscount" type="number" min="0" step="0.50" value="0.00" oninput="updateCartTotals()"
+                                               class="w-20 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-right text-xs font-semibold">
+                                    </div>
+                                    <div class="flex justify-between text-base font-extrabold text-slate-900 pt-2 border-t border-dashed border-slate-200">
+                                        <span>Total Final</span>
+                                        <span id="cartFinalTotal" class="text-brand-600 text-xl">R$ 0,00</span>
+                                    </div>
+                                </div>
+
+                                <button onclick="openCheckoutModal()" id="btnCheckout" disabled
+                                        class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-
+
+                                    hover:text-white font-bold text-sm rounded-xl transition">
+                                    Finalizar Venda
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW 3: ESTOQUE -->
+                <section id="view-estoque" class="hidden space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <h3 class="text-xl font-black text-slate-900">Estoque & Produtos</h3>
+                            <p class="text-sm text-slate-400">Cadastre produtos, acompanhe estoque e níveis críticos.</p>
+                        </div>
+                        <div class="flex gap-2"><button onclick="openStockEntryModal()" class="px-4 py-2.5 border rounded-xl text-sm font-bold">+ Entrada</button><button onclick="openProductModal()" class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold rounded-xl">+ Novo produto</button></div>
+                    </div>
+                    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+                        <div class="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-3">
+                            <input id="stockSearch" oninput="renderStock()" placeholder="Buscar produto..." class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm">
+                            <select id="stockCategory" onchange="renderStock()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm">
+                                <option value="todos">Todas categorias</option>
+                                <option value="ração">Rações & Alimentos</option>
+                                <option value="petisco">Petiscos</option>
+                                <option value="farmacia">Medicamentos / Farmácia</option>
+                                <option value="higiene">Higiene & Estética</option>
+                                <option value="brinquedos">Acessórios / Brinquedos</option>
+                            </select>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-slate-50 text-xs uppercase text-slate-400">
+                                    <tr><th class="text-left px-5 py-3">Produto</th><th class="text-left px-5 py-3">Categoria</th><th class="text-left px-5 py-3">Venda</th><th class="text-left px-5 py-3">Custo</th><th class="text-left px-5 py-3">Margem</th><th class="text-left px-5 py-3">Estoque</th><th class="text-left px-5 py-3">Status</th><th class="px-5 py-3"></th></tr>
+                                </thead>
+                                <tbody id="stockTableBody" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+
+                <!-- VIEW CAIXA -->
+                <section id="view-caixa" class="hidden space-y-6">
+                    <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3">
+                        <div>
+                            <h3 class="text-xl font-black text-slate-900">Caixa & Fechamento</h3>
+                            <p class="text-sm text-slate-400">Controle de abertura, movimentos, vendas e conferência do caixa.</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="openCashMovementModal('suprimento')" class="px-4 py-2.5 border rounded-xl text-xs font-bold">+ Suprimento</button>
+                            <button onclick="openCashMovementModal('sangria')" class="px-4 py-2.5 border rounded-xl text-xs font-bold">− Sangria</button>
+                            <button onclick="openCloseCashModal()" class="px-4 py-2.5 bg-brand-600 text-white rounded-xl text-xs font-bold">Fechar caixa</button>
+                        </div>
+                    </div>
+                    <div id="cashStatusCard" class="bg-white rounded-2xl border border-slate-200 p-6"></div>
+                    <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
+                        <div class="bg-white rounded-2xl border p-5"><span class="text-xs text-slate-400">Abertura</span><strong id="cashOpening" class="block text-2xl mt-1">R$ 0,00</strong></div>
+                        <div class="bg-white rounded-2xl border p-5"><span class="text-xs text-slate-400">Vendas em dinheiro</span><strong id="cashMoneySales" class="block text-2xl mt-1">R$ 0,00</strong></div>
+                        <div class="bg-white rounded-2xl border p-5"><span class="text-xs text-slate-400">Movimentos</span><strong id="cashMovements" class="block text-2xl mt-1">R$ 0,00</strong></div>
+                        <div class="bg-white rounded-2xl border p-5"><span class="text-xs text-slate-400">Saldo esperado</span><strong id="cashExpected" class="block text-2xl mt-1 text-emerald-600">R$ 0,00</strong></div>
+                    </div>
+                    <div class="bg-white rounded-2xl border border-slate-200 p-5">
+                        <h4 class="font-bold mb-4">Movimentações do turno</h4>
+                        <div id="cashMovementList" class="space-y-2"></div>
+                    </div>
+                </section>
+
+                <!-- VIEW 4: BANHO E TOSA -->
+                <section id="view-banho" class="hidden space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div><h3 class="text-xl font-black text-slate-900">Banho, Tosa & Fila</h3><p class="text-sm text-slate-400">Agenda e acompanhe os pets em atendimento.</p></div>
+                        <button onclick="openAppointmentModal()" class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold rounded-xl">+ Novo atendimento</button>
+                    </div>
+                    <div id="appointmentsGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+                </section>
+
+                <!-- VIEW 5: CLIENTES -->
+                <section id="view-clientes" class="hidden space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div><h3 class="text-xl font-black text-slate-900">Tutores & Pets</h3><p class="text-sm text-slate-400">CRM de clientes e histórico dos animais.</p></div>
+                        <button onclick="openClientModal()" class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold rounded-xl">+ Novo tutor</button>
+                    </div>
+                    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+                        <div class="p-4"><input id="clientSearch" oninput="renderClients()" placeholder="Buscar tutor ou pet..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm"></div>
+                        <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50 text-xs uppercase text-slate-400"><tr><th class="text-left px-5 py-3">Tutor</th><th class="text-left px-5 py-3">Pet</th><th class="text-left px-5 py-3">Telefone</th><th class="text-left px-5 py-3">Última visita</th><th class="px-5 py-3"></th></tr></thead><tbody id="clientsTableBody" class="divide-y divide-slate-100"></tbody></table></div>
+                    </div>
+                </section>
+
+                <!-- VIEW 6: RELATÓRIOS -->
+                <section id="view-relatorios" class="hidden space-y-6">
+                    <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3">
+                        <div>
+                            <h3 class="text-xl font-black text-slate-900">Financeiro & DRE</h3>
+                            <p class="text-sm text-slate-400">Visão geral da operação, vendas, recebimentos, estoque, clientes e resultado financeiro.</p>
+                        </div>
+                        <button onclick="exportReportCSV()" class="px-4 py-2.5 border border-slate-200 bg-white rounded-xl text-xs font-bold hover:bg-slate-50">⬇ Exportar vendas CSV</button>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-7 gap-4">
+                        <div class="bg-white rounded-2xl border border-slate-200 p-5"><span class="text-xs text-slate-400">Receita bruta</span><strong id="reportRevenue" class="block text-2xl mt-1">R$ 0,00</strong></div>
+                        <div class="bg-white rounded-2xl border border-slate-200 p-5"><span class="text-xs text-slate-400">Descontos</span><strong id="reportDiscounts" class="block text-2xl mt-1 text-amber-600">R$ 0,00</strong></div>
+                        <div class="bg-white rounded-2xl border border-slate-200 p-5"><span class="text-xs text-slate-400">Receita líquida</span><strong id="reportNetRevenue" class="block text-2xl mt-1 text-emerald-600">R$ 0,00</strong></div>
+                        <div class="bg-white rounded-2xl border border-slate-200 p-5"><span class="text-xs text-slate-400">Número de vendas</span><strong id="reportSales" class="block text-2xl mt-1">0</strong></div>
+                        <div class="bg-white rounded-2xl border border-slate-200 p-5"><span class="text-xs text-slate-400">Ticket médio</span><strong id="reportAverage" class="block text-2xl mt-1">R$ 0,00</strong></div>
+                        <div class="bg-white rounded-2xl border border-slate-200 p-5"><span class="text-xs text-slate-400">CMV</span><strong id="reportCMV" class="block text-2xl mt-1 text-amber-600">R$ 0,00</strong></div>
+                        <div class="bg-white rounded-2xl border border-slate-200 p-5"><span class="text-xs text-slate-400">Margem bruta</span><strong id="reportMargin" class="block text-2xl mt-1 text-brand-600">0%</strong></div>
+                    </div>
+
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-2xl border border-slate-200 p-6">
+                            <div class="flex justify-between items-center mb-4"><div><h4 class="font-bold">Faturamento por período</h4><p class="text-xs text-slate-400">Últimos 30 dias</p></div></div>
+                            <div class="h-72"><canvas id="chartFinance"></canvas></div>
+                        </div>
+                        <div class="bg-white rounded-2xl border border-slate-200 p-6">
+                            <h4 class="font-bold mb-1">Recebimentos por forma de pagamento</h4>
+                            <p class="text-xs text-slate-400 mb-4">Total registrado nas vendas</p>
+                            <div class="h-72"><canvas id="chartPayment"></canvas></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                        <div class="xl:col-span-2 bg-white rounded-2xl border border-slate-200 p-5">
+                            <h4 class="font-bold mb-4">DRE simplificado</h4>
+                            <div class="space-y-3 text-sm">
+                                <div class="flex justify-between"><span>Receita bruta de vendas</span><strong id="dreGross">R$ 0,00</strong></div>
+                                <div class="flex justify-between"><span>(-) Descontos concedidos</span><strong id="dreDiscounts" class="text-amber-600">R$ 0,00</strong></div>
+                                <div class="border-t pt-3 flex justify-between text-base"><span class="font-bold">Receita líquida</span><strong id="dreNet" class="text-emerald-600">R$ 0,00</strong></div>
+                                <div class="flex justify-between"><span>(-) CMV</span><strong id="dreCmv" class="text-amber-600">R$ 0,00</strong></div>
+                                <div class="flex justify-between"><span>Lucro bruto</span><strong id="dreGrossProfit" class="text-brand-600">R$ 0,00</strong></div>
+                                <div class="flex justify-between"><span>Margem bruta</span><strong id="dreMargin">0%</strong></div>
+                                <div class="flex justify-between"><span>(-) Despesas cadastradas</span><strong id="dreExpenses" class="text-rose-600">R$ 0,00</strong></div>
+                                <div class="border-t pt-3 flex justify-between text-base"><span class="font-bold">Resultado após despesas cadastradas</span><strong id="dreResult">R$ 0,00</strong></div>
+                            </div>
+                            <div class="mt-4 p-3 rounded-xl bg-slate-50 text-xs text-slate-500">Observação: o cadastro atual não possui custo de aquisição por produto. O DRE mostra despesas operacionais cadastradas e sinaliza que CMV/custo de mercadoria ainda não está disponível.</div>
+                        </div>
+                        <div class="bg-white rounded-2xl border border-slate-200 p-5">
+                            <h4 class="font-bold mb-4">Adicionar despesa</h4>
+                            <div class="space-y-3">
+                                <input id="expenseDescription" placeholder="Descrição" class="w-full border rounded-xl px-3 py-2.5 text-sm">
+                                <input id="expenseValue" type="number" min="0" step="0.01" placeholder="Valor" class="w-full border rounded-xl px-3 py-2.5 text-sm">
+                                <button onclick="addExpense()" class="w-full bg-brand-600 text-white font-bold py-2.5 rounded-xl">Adicionar despesa</button>
+                            </div>
+                            <div id="expenseList" class="mt-4 space-y-2"></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-2xl border border-slate-200 p-5"><h4 class="font-bold mb-4">Produtos mais vendidos</h4><div id="reportTopProducts" class="space-y-2"></div></div>
+                        <div class="bg-white rounded-2xl border border-slate-200 p-5"><h4 class="font-bold mb-4">Indicadores da empresa</h4><div id="reportBusinessIndicators" class="grid grid-cols-2 gap-3"></div></div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-slate-200 p-5">
+                        <h4 class="font-bold mb-4">Últimas vendas</h4>
+                        <div id="reportSalesList" class="space-y-2"></div>
+                    </div>
+                </section>
+
+                <!-- VIEW 7: CONFIGURAÇÕES -->
+                <section id="view-config" class="hidden space-y-6">
+                    <div><h3 class="text-xl font-black text-slate-900">Ajustes & Dados</h3><p class="text-sm text-slate-400">Configurações da empresa, PIX e manutenção dos dados locais.</p></div>
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                        <div class="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
+                            <h4 class="font-bold">Configurações da loja</h4>
+                            <label class="block text-sm">Nome da empresa<input id="configCompany" class="mt-1 w-full border rounded-xl px-3 py-2.5" value="PetFlow Pro"></label>
+                            <label class="block text-sm">Caixa<input id="configTerminal" class="mt-1 w-full border rounded-xl px-3 py-2.5" value="Caixa #01"></label>
+                            <button onclick="saveSettings()" class="px-4 py-2.5 bg-brand-600 text-white rounded-xl font-bold">Salvar configurações</button>
+                        </div>
+
+                        <div class="bg-white rounded-2xl border border-emerald-200 p-6 space-y-4">
+                            <div><h4 class="font-bold flex items-center gap-2">💠 Configuração do PIX</h4><p class="text-xs text-slate-400 mt-1">A chave abaixo será usada para montar o QR Code na finalização da venda.</p></div>
+                            <label class="block text-sm">Tipo da chave
+                                <select id="configPixType" class="mt-1 w-full border rounded-xl px-3 py-2.5">
+                                    <option>CPF</option><option>CNPJ</option><option>EMAIL</option><option>TELEFONE</option><option>CHAVE ALEATÓRIA</option>
+                                </select>
+                            </label>
+                            <label class="block text-sm">Chave PIX<input id="configPixKey" placeholder="Digite a chave PIX" class="mt-1 w-full border rounded-xl px-3 py-2.5"></label>
+                            <label class="block text-sm">Nome do recebedor<input id="configPixMerchant" class="mt-1 w-full border rounded-xl px-3 py-2.5" value="PetFlow Pro"></label>
+                            <label class="block text-sm">Cidade<input id="configPixCity" class="mt-1 w-full border rounded-xl px-3 py-2.5" value="SAO PAULO"></label>
+                            <button onclick="saveSettings()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-2.5 font-bold">Salvar PIX</button>
+                            <div id="pixConfigStatus" class="text-xs text-slate-500"></div>
+                        </div>
+
+
+                        <div class="bg-white rounded-2xl border border-slate-200 p-6 space-y-3">
+                            <h4 class="font-bold">Usuários e permissões</h4>
+                            <p class="text-xs text-slate-500">Perfis locais: Administrador, Gerente e Vendedor. A autenticação continua local nesta versão; para segurança de produção, o próximo passo é migrar a autenticação para o backend.</p>
+                            <div id="userList" class="space-y-2"></div>
+                            <button onclick="openUserModal()" class="w-full bg-brand-600 text-white rounded-xl px-4 py-2.5 font-bold">+ Novo usuário</button>
+                        </div>
+                        <div class="bg-white rounded-2xl border border-slate-200 p-6 space-y-3 xl:col-span-2">
+                            <div class="flex justify-between items-center"><div><h4 class="font-bold">Auditoria</h4><p class="text-xs text-slate-500">Histórico de login, vendas, alterações e operações administrativas.</p></div><button onclick="exportAuditCSV()" class="border rounded-xl px-3 py-2 text-xs font-bold">Exportar auditoria</button></div>
+                            <div id="auditList" class="max-h-72 overflow-auto space-y-2"></div>
+                        </div>
+
+                        <div class="bg-white rounded-2xl border border-slate-200 p-6 space-y-3">
+                            <h4 class="font-bold">Dados locais</h4>
+                            <p class="text-sm text-slate-500">Este protótipo utiliza localStorage. Faça uma cópia dos dados antes de limpar.</p>
+                            <button onclick="exportData()" class="w-full border rounded-xl px-4 py-2.5 font-bold">Exportar backup JSON</button>
+                            <label class="w-full border rounded-xl px-4 py-2.5 font-bold text-center cursor-pointer block">Importar backup JSON<input id="backupFile" type="file" accept=".json,application/json" class="hidden" onchange="importData(this.files[0])"></label>
+                            <button onclick="installPWA()" id="installPwaBtn" class="w-full bg-indigo-50 text-indigo-700 rounded-xl px-4 py-2.5 font-bold">📲 Instalar PetFlow</button>
+                            <button onclick="clearLocalData()" class="w-full bg-rose-50 text-rose-600 rounded-xl px-4 py-2.5 font-bold">Limpar dados locais</button>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- MODAL GENÉRICO -->
+    <div id="modalRoot" class="fixed inset-0 z-[100] hidden items-center justify-center bg-slate-950/50 backdrop-blur-sm p-4">
+        <div id="modalCard" class="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden"></div>
+    </div>
+
+    <div id="printableReceipt" class="hidden"></div>
+
+    <script>
+    (() => {
+        const STORAGE_KEY = 'petflow_pro_v1';
+
+        const defaultData = {
+            products: [
+                {id:1,name:'Ração Premium 15kg',category:'ração',price:129.90,cost:85.00,stock:8,min:5,barcode:'789000000001'},
+                {id:2,name:'Ração Cães Adultos 10kg',category:'ração',price:89.90,cost:58.00,stock:4,min:5,barcode:'789000000002'},
+                {id:3,name:'Petisco Natural',category:'petisco',price:19.90,cost:9.50,stock:24,min:8,barcode:'789000000003'},
+                {id:4,name:'Shampoo Pet 500ml',category:'higiene',price:32.50,cost:15.00,stock:12,min:4,barcode:'789000000004'},
+                {id:5,name:'Brinquedo Mordedor',category:'brinquedos',price:24.90,cost:11.00,stock:16,min:5,barcode:'789000000005'},
+                {id:6,name:'Antipulgas',category:'farmacia',price:49.90,cost:28.00,stock:3,min:5,barcode:'789000000006'},
+                {id:7,name:'Areia Higiênica 4kg',category:'higiene',price:28.90,cost:16.00,stock:15,min:5,barcode:'789000000007'},
+                {id:8,name:'Petisco Dental',category:'petisco',price:14.90,cost:6.50,stock:31,min:10,barcode:'789000000008'}
+            ],
+            cart: [],
+            sales: [],
+            clients: [
+                {id:1,tutor:'Mariana Silva',pet:'Thor',phone:'(11) 99999-1111',last:'24/09/2026',petType:'Cachorro',breed:'Golden Retriever',birth:'12/03/2021',weight:28},
+                {id:2,tutor:'Carlos Souza',pet:'Mel',phone:'(11) 98888-2222',last:'22/09/2026',petType:'Gato',breed:'SRD',birth:'05/07/2022',weight:4.2},
+                {id:3,tutor:'Fernanda Lima',pet:'Luna',phone:'(11) 97777-3333',last:'20/09/2026',petType:'Cachorro',breed:'Shih-tzu',birth:'18/11/2020',weight:6.8}
+            ],
+            appointments: [
+                {id:1,time:'09:00',tutor:'Mariana Silva',pet:'Thor',service:'Banho',status:'Aguardando'},
+                {id:2,time:'10:30',tutor:'Carlos Souza',pet:'Mel',service:'Banho + Tosa',status:'Em atendimento'},
+                {id:3,time:'14:00',tutor:'Fernanda Lima',pet:'Luna',service:'Tosa higiênica',status:'Agendado'}
+            ],
+            settings:{
+                company:'PetFlow Pro',
+                terminal:'Caixa #01',
+                pixKey:'',
+                pixKeyType:'CNPJ',
+                pixMerchantName:'PetFlow Pro',
+                pixCity:'SAO PAULO',
+                lowStockAlerts:true
+            },
+            expenses:[],
+            cash:{
+                opened:false, opening:0, openedAt:null, openedBy:'',
+                movements:[], closedAt:null, closing:0, difference:0
+            },
+            audit:[],
+            stockMoves:[],
+            users:[
+                {id:1,name:'Admin Geral',login:'admin',role:'Administrador',passwordHash:'8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92'}
+            ]
+        };
+
+        let data = loadData();
+        let currentView = 'dashboard';
+        let ticket = 1001;
+        let weeklyChart = null;
+        let financeChart = null;
+
+        function loadData() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+                if(!saved)return structuredClone(defaultData);
+                const merged = {
+                    ...structuredClone(defaultData),
+                    ...saved,
+                    settings:{...defaultData.settings,...(saved.settings||{})},
+                    expenses:Array.isArray(saved.expenses)?saved.expenses:[],
+                    audit:Array.isArray(saved.audit)?saved.audit:[],
+                    stockMoves:Array.isArray(saved.stockMoves)?saved.stockMoves:[],
+                    users:Array.isArray(saved.users)&&saved.users.length?saved.users:structuredClone(defaultData.users),
+                    cash:{...defaultData.cash,...(saved.cash||{}),movements:Array.isArray(saved.cash?.movements)?saved.cash.movements:[]}
+                };
+                merged.products=(merged.products||[]).map(p=>({...p,cost:Number.isFinite(Number(p.cost))?Number(p.cost):0,min:Number(p.min)||0}));
+                return merged;
+            } catch(e) { return structuredClone(defaultData); }
+        }
+        function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+
+        const money = n => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(n)||0);
+        const esc = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+        const today = () => new Date().toLocaleDateString('pt-BR');
+        const nextId = arr => arr.length ? Math.max(...arr.map(x=>Number(x.id)||0))+1 : 1;
+
+        function toast(message,type='success') {
+            const el=document.createElement('div');
+            const cls=type==='error'?'bg-rose-600':type==='warning'?'bg-amber-500':'bg-emerald-600';
+            el.className=`pointer-events-auto ${cls} text-white px-4 py-3 rounded-xl shadow-xl text-sm font-semibold animate-pulse`;
+            el.textContent=message;
+            document.getElementById('toastContainer').appendChild(el);
+            setTimeout(()=>el.remove(),2800);
+        }
+
+        let currentUser = null;
+        async function sha256(value){
+            const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(value)));
+            return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+        }
+        function audit(action,details=''){
+            data.audit.unshift({id:nextId(data.audit),date:new Date().toISOString(),user:currentUser?.name||'Sistema',role:currentUser?.role||'Sistema',action,details});
+            data.audit=data.audit.slice(0,1000);
+        }
+        function can(role){
+            const rank={Vendedor:1,Gerente:2,Administrador:3};
+            return (rank[currentUser?.role]||0)>=(rank[role]||3);
+        }
+        window.handleAuth = async e => {
+            e.preventDefault();
+            const user=document.getElementById('authLogin').value.trim();
+            const pass=document.getElementById('authPass').value;
+            if(!user || !pass) return toast('Informe usuário e senha.','error');
+            const hash=await sha256(pass);
+            const found=data.users.find(u=>u.login.toLowerCase()===user.toLowerCase() && u.passwordHash===hash);
+            if(!found) return toast('Usuário ou senha inválidos.','error');
+            currentUser=found;
+            document.getElementById('sessionUserName').textContent=found.name;
+            document.getElementById('loginScreen').classList.add('opacity-0','pointer-events-none');
+            setTimeout(()=>document.getElementById('loginScreen').classList.add('hidden'),500);
+            sessionStorage.setItem('petflow_logged',JSON.stringify({id:found.id,name:found.name,role:found.role}));
+            audit('LOGIN',`Acesso ao sistema pelo usuário ${found.login}`);
+            saveData();
+            toast(`Bem-vindo, ${found.name}!`);
+            refreshAll();
+        };
+        window.fillDemoCredentials=()=>{document.getElementById('authLogin').value='admin';document.getElementById('authPass').value='123456';};
+        window.togglePassVisibility=()=>{const i=document.getElementById('authPass');i.type=i.type==='password'?'text':'password';};
+        window.logout=()=>{audit('LOGOUT','Sessão encerrada');saveData();sessionStorage.removeItem('petflow_logged');currentUser=null;document.getElementById('loginScreen').classList.remove('hidden','opacity-0','pointer-events-none');toast('Sessão encerrada.','warning');};
+        window.toggleMobileMenu=()=>{
+            document.getElementById('sidebar').classList.toggle('-translate-x-full');
+            document.getElementById('sidebarBackdrop').classList.toggle('hidden');
+        };
+
+        const views = {
+            dashboard:['Painel de Gestão','Visão unificada das operações de hoje'],
+            pdv:['Caixa / PDV Rápido','Venda de produtos e fechamento do caixa'],
+            caixa:['Caixa & Fechamento','Abertura, sangria, suprimento e conferência'],
+            estoque:['Estoque & Produtos','Controle de produtos, custos e níveis de estoque'],
+            banho:['Banho, Tosa & Fila','Agenda e acompanhamento dos serviços'],
+            clientes:['Tutores & Pets (CRM)','Relacionamento e histórico dos clientes'],
+            relatorios:['Financeiro & DRE','Resumo das operações financeiras e indicadores'],
+            config:['Ajustes & Dados','Configurações, usuários, auditoria e backup']
+        };
+
+        window.switchView = view => {
+            currentView=view;
+            Object.keys(views).forEach(v=>{
+                document.getElementById(`view-${v}`)?.classList.toggle('hidden',v!==view);
+                document.getElementById(`nav-${v}`)?.classList.toggle('bg-brand-600',v===view);
+                document.getElementById(`nav-${v}`)?.classList.toggle('text-white',v===view);
+            });
+            document.getElementById('currentViewTitle').textContent=views[view][0];
+            document.getElementById('currentViewSubtitle').textContent=views[view][1];
+            if(window.innerWidth<1024){document.getElementById('sidebar').classList.add('-translate-x-full');document.getElementById('sidebarBackdrop').classList.add('hidden');}
+            refreshAll();
+        };
+
+        function renderPdvProducts() {
+            const q=(document.getElementById('pdvSearchInput')?.value||'').toLowerCase().trim();
+            const cat=document.getElementById('pdvCategoryFilter')?.value||'todos';
+            const list=data.products.filter(p=>(cat==='todos'||p.category===cat)&&(!q||p.name.toLowerCase().includes(q)||String(p.barcode).includes(q)));
+            document.getElementById('pdvProductsGrid').innerHTML=list.map(p=>`
+                <button onclick="addToCart(${p.id})" ${p.stock<=0?'disabled':''} class="text-left bg-white border border-slate-200 hover:border-brand-400 hover:shadow-md rounded-2xl p-4 transition disabled:opacity-40">
+                    <div class="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center text-xl mb-3">📦</div>
+                    <div class="text-xs font-bold text-slate-800 line-clamp-2 min-h-8">${esc(p.name)}</div>
+                    <div class="text-brand-600 font-black mt-2">${money(p.price)}</div>
+                    <div class="text-[10px] text-slate-400 mt-1">${p.stock} em estoque</div>
+                </button>`).join('') || `<div class="col-span-full text-center py-16 text-sm text-slate-400">Nenhum produto encontrado.</div>`;
+        }
+
+        window.addToCart=id=>{
+            const p=data.products.find(x=>x.id===id); if(!p)return;
+            const item=data.cart.find(x=>x.productId===id);
+            if((item?.qty||0)>=p.stock)return toast('Estoque insuficiente.','error');
+            if(item)item.qty++; else data.cart.push({productId:id,qty:1});
+            saveData(); renderCart();
+        };
+        window.changeCartQty=(id,delta)=>{
+            const item=data.cart.find(x=>x.productId===id); if(!item)return;
+            const p=data.products.find(x=>x.id===id);
+            item.qty+=delta;
+            if(item.qty<=0)data.cart=data.cart.filter(x=>x.productId!==id);
+            else if(item.qty>p.stock)item.qty=p.stock;
+            saveData();renderCart();
+        };
+        window.clearCart=()=>{data.cart=[];document.getElementById('cartDiscount').value='0';saveData();renderCart();};
+        window.updateCartTotals=renderCart;
+
+        function cartSubtotal(){return data.cart.reduce((s,i)=>{const p=data.products.find(x=>x.id===i.productId);return s+(p?p.price*i.qty:0)},0);}
+        function renderCart(){
+            const box=document.getElementById('cartItemsContainer'); if(!box)return;
+            box.innerHTML=data.cart.map(i=>{const p=data.products.find(x=>x.id===i.productId);return p?`
+                <div class="flex items-center gap-3 p-2.5 bg-slate-50 rounded-xl">
+                    <div class="w-9 h-9 rounded-lg bg-white flex items-center justify-center">📦</div>
+                    <div class="min-w-0 flex-1"><div class="text-xs font-bold truncate">${esc(p.name)}</div><div class="text-[11px] text-slate-400">${money(p.price)}</div></div>
+                    <div class="flex items-center gap-1"><button onclick="changeCartQty(${p.id},-1)" class="w-6 h-6 rounded-md bg-white border">−</button><span class="text-xs font-bold w-5 text-center">${i.qty}</span><button onclick="changeCartQty(${p.id},1)" class="w-6 h-6 rounded-md bg-white border">+</button></div>
+                    <strong class="text-xs w-16 text-right">${money(p.price*i.qty)}</strong>
+                </div>`:''}).join('') || `<div class="h-40 flex items-center justify-center text-sm text-slate-400">Carrinho vazio</div>`;
+            const subtotal=cartSubtotal();
+            const discount=Math.max(0,Math.min(Number(document.getElementById('cartDiscount')?.value)||0,subtotal));
+            document.getElementById('cartSubtotal').textContent=money(subtotal);
+            document.getElementById('cartFinalTotal').textContent=money(subtotal-discount);
+            document.getElementById('btnCheckout').disabled=data.cart.length===0;
+        }
+
+        function normalizePixText(value){
+            return String(value||'').trim();
+        }
+
+        function crc16(payload){
+            let crc=0xFFFF;
+            for(let i=0;i<payload.length;i++){
+                crc ^= payload.charCodeAt(i)<<8;
+                for(let j=0;j<8;j++) crc=(crc&0x8000)?((crc<<1)^0x1021)&0xFFFF:(crc<<1)&0xFFFF;
+            }
+            return crc.toString(16).toUpperCase().padStart(4,'0');
+        }
+
+        function pixField(id,value){ const s=String(value||''); return id+String(s.length).padStart(2,'0')+s; }
+
+        function buildPixPayload(amount){
+            const key=normalizePixText(data.settings.pixKey);
+            if(!key) return '';
+            const merchant=normalizePixText(data.settings.pixMerchantName||data.settings.company).normalize('NFD').replace(/[^\x20-\x7E]/g,'').toUpperCase().slice(0,25);
+            const city=normalizePixText(data.settings.pixCity||'SAO PAULO').normalize('NFD').replace(/[^\x20-\x7E]/g,'').toUpperCase().slice(0,15);
+            let payload='000201';
+            payload += pixField('26',pixField('00','BR.GOV.BCB.PIX')+pixField('01',key));
+            payload += '52040000';
+            payload += '5303986';
+            payload += pixField('54',Number(amount).toFixed(2));
+            payload += '5802BR';
+            payload += pixField('59',merchant);
+            payload += pixField('60',city);
+            payload += pixField('62',pixField('05','***'));
+            payload += '6304';
+            return payload+crc16(payload);
+        }
+
+        function renderPixQr(amount){
+            const canvas=document.getElementById('pixQrCanvas');
+            const key=data.settings.pixKey;
+            if(!canvas)return;
+            if(!key){
+                canvas.classList.add('hidden');
+                const warn=document.getElementById('pixQrWarning');
+                if(warn)warn.classList.remove('hidden');
+                return;
+            }
+            const payload=buildPixPayload(amount);
+            if(window.QRious){
+                new QRious({element:canvas,value:payload,size:240,level:'H'});
+                canvas.classList.remove('hidden');
+            }
+            document.getElementById('pixCopyCode').value=payload;
+            document.getElementById('pixKeyDisplay').textContent=key;
+            document.getElementById('pixQrWarning')?.classList.add('hidden');
+        }
+
+        window.copyPixCode=()=>{
+            const input=document.getElementById('pixCopyCode');
+            if(!input?.value)return toast('Configure a chave PIX primeiro.','error');
+            navigator.clipboard?.writeText(input.value).then(()=>toast('Código PIX copiado.')).catch(()=>{input.select();document.execCommand('copy');toast('Código PIX copiado.');});
+        };
+
+        window.selectPaymentMethod=()=>{
+            const method=document.getElementById('paymentMethod').value;
+            document.getElementById('pixPaymentBox')?.classList.toggle('hidden',method!=='PIX');
+            if(method==='PIX') renderPixQr(window.currentCheckoutTotal||0);
+        };
+
+        window.openCheckoutModal=()=>{
+            if(!data.cart.length)return;
+            const total=Math.max(0,cartSubtotal()-(Number(document.getElementById('cartDiscount').value)||0));
+            window.currentCheckoutTotal=total;
+            showModal(`<div class="p-6">
+                <div class="flex justify-between items-start mb-5"><div><h3 class="text-lg font-black">Finalizar venda</h3><p class="text-xs text-slate-400">Venda #${ticket}</p></div><button onclick="closeModal()" class="text-slate-400 text-xl">✕</button></div>
+                <div class="bg-slate-50 rounded-2xl p-5 mb-5 text-center"><span class="text-xs text-slate-400">Total a pagar</span><div class="text-3xl font-black text-brand-600 mt-1">${money(total)}</div></div>
+                <label class="text-xs font-bold text-slate-500 uppercase">Forma de pagamento</label>
+                <select id="paymentMethod" onchange="selectPaymentMethod()" class="mt-2 w-full border border-slate-200 rounded-xl px-3 py-3 text-sm"><option value="PIX">PIX</option><option>Dinheiro</option><option>Cartão de débito</option><option>Cartão de crédito</option></select>
+
+                <div id="pixPaymentBox" class="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4">
+                    <div class="flex items-center justify-between"><div><h4 class="font-black text-emerald-800">Pagamento via PIX</h4><p class="text-xs text-emerald-700">Escaneie o QR Code no aplicativo do banco.</p></div><span class="text-xl">▣</span></div>
+                    <div class="mt-4 flex flex-col items-center">
+                        <canvas id="pixQrCanvas" width="240" height="240" class="bg-white p-2 rounded-xl border border-slate-200"></canvas>
+                        <div id="pixQrWarning" class="hidden w-full text-center text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-xl p-3">Nenhuma chave PIX configurada. Cadastre a chave em <b>Ajustes & Dados</b>.</div>
+                        <div class="w-full mt-3"><div class="text-[10px] text-slate-500">Chave PIX</div><div id="pixKeyDisplay" class="text-xs font-bold break-all"></div></div>
+                        <input id="pixCopyCode" readonly class="mt-2 w-full bg-white border rounded-xl px-3 py-2 text-[10px]" placeholder="Código PIX copia e cola">
+                        <button onclick="copyPixCode()" class="mt-2 w-full border border-emerald-300 text-emerald-700 bg-white font-bold py-2 rounded-xl text-xs">Copiar PIX Copia e Cola</button>
+                    </div>
+                    <div class="mt-4 p-3 rounded-xl bg-white border border-emerald-100 text-xs text-slate-600"><b>Sem integração bancária:</b> o vendedor deve conferir o recebimento diretamente no aplicativo do banco antes de confirmar.</div>
+                </div>
+
+                <button onclick="finishSale()" class="mt-5 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl">Confirmar pagamento</button>
+            </div>`);
+            renderPixQr(total);
+        };
+
+        window.finishSale=()=>{
+            const method=document.getElementById('paymentMethod')?.value||'PIX';
+            if(method==='PIX' && !data.settings.pixKey){
+                return toast('Configure a chave PIX em Ajustes & Dados antes de finalizar por PIX.','error');
+            }
+            if(method==='PIX'){
+                const ok=confirm('Confirme no aplicativo do banco se o PIX foi recebido. Deseja registrar a venda como paga?');
+                if(!ok)return;
+            }
+            if(method==='Dinheiro' && !data.cash.opened){
+                return toast('Abra o caixa antes de registrar uma venda em dinheiro.','error');
+            }
+            const subtotal=cartSubtotal(),discount=Number(document.getElementById('cartDiscount').value)||0,total=Math.max(0,subtotal-discount);
+            data.cart.forEach(i=>{const p=data.products.find(x=>x.id===i.productId);if(p)p.stock-=i.qty;});
+            const saleItems=data.cart.map(x=>{
+                const p=data.products.find(y=>y.id===x.productId);
+                return {...x,unitPrice:p?.price||0,unitCost:p?.cost||0};
+            });
+            const cmv=saleItems.reduce((s,i)=>s+(Number(i.unitCost)||0)*i.qty,0);
+            const saleId=ticket++;
+            data.sales.unshift({
+                id:saleId,
+                date:new Date().toISOString(),
+                total,subtotal,discount,
+                payment:method,
+                pixConfirmed:method==='PIX',
+                cmv,
+                grossProfit:total-cmv,
+                items:saleItems
+            });
+            if(data.cash.opened && method==='Dinheiro'){
+                data.cash.movements.push({id:nextId(data.cash.movements),date:new Date().toISOString(),type:'VENDA',value:total,ref:`Venda #${saleId}`,user:currentUser?.name||'Sistema'});
+            }
+            audit('VENDA',`Venda #${saleId} | ${method} | ${money(total)} | CMV ${money(cmv)}`);
+            data.cart=[];saveData();closeModal();document.getElementById('cartDiscount').value='0';
+            renderCart();refreshAll();toast('Venda finalizada com sucesso!');
+        };
+
+        function renderStock(){
+            const q=(document.getElementById('stockSearch')?.value||'').toLowerCase();
+            const cat=document.getElementById('stockCategory')?.value||'todos';
+            const list=data.products.filter(p=>(cat==='todos'||p.category===cat)&&p.name.toLowerCase().includes(q));
+            document.getElementById('stockTableBody').innerHTML=list.map(p=>`
+                <tr><td class="px-5 py-3 font-semibold">${esc(p.name)}<div class="text-[10px] text-slate-400">${p.barcode}</div></td><td class="px-5 py-3">${esc(p.category)}</td><td class="px-5 py-3 font-bold">${money(p.price)}</td><td class="px-5 py-3">${money(p.cost||0)}</td><td class="px-5 py-3">${p.price?((p.price-(p.cost||0))/p.price*100).toFixed(1)+'%':'0%'}</td><td class="px-5 py-3">${p.stock}</td><td class="px-5 py-3">${p.stock<=p.min?'<span class="px-2 py-1 rounded-lg bg-rose-50 text-rose-600 text-xs font-bold">Crítico</span>':'<span class="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-bold">Normal</span>'}</td><td class="px-5 py-3 text-right"><button onclick="editProduct(${p.id})" class="text-brand-600 font-bold">Editar</button></td></tr>`).join('');
+        }
+        window.openProductModal=(id=null)=>{
+            const p=id?data.products.find(x=>x.id===id):{name:'',category:'ração',price:'',stock:0,min:5,barcode:''};
+            showModal(`<div class="p-6"><div class="flex justify-between mb-5"><h3 class="text-lg font-black">${id?'Editar':'Novo'} produto</h3><button onclick="closeModal()">✕</button></div>
+            <div class="grid grid-cols-2 gap-3"><label class="col-span-2 text-xs font-bold">Nome<input id="mName" value="${esc(p.name)}" class="mt-1 w-full border rounded-xl px-3 py-2.5"></label>
+            <label class="text-xs font-bold">Categoria<select id="mCat" class="mt-1 w-full border rounded-xl px-3 py-2.5">${['ração','petisco','farmacia','higiene','brinquedos'].map(c=>`<option ${c===p.category?'selected':''} value="${c}">${c}</option>`).join('')}</select></label>
+            <label class="text-xs font-bold">Preço de venda<input id="mPrice" type="number" step=".01" value="${p.price}" class="mt-1 w-full border rounded-xl px-3 py-2.5"></label>
+            <label class="text-xs font-bold">Custo unitário<input id="mCost" type="number" min="0" step=".01" value="${p.cost||0}" class="mt-1 w-full border rounded-xl px-3 py-2.5"></label>
+            <label class="text-xs font-bold">Estoque<input id="mStock" type="number" value="${p.stock}" class="mt-1 w-full border rounded-xl px-3 py-2.5"></label>
+            <label class="text-xs font-bold">Estoque mínimo<input id="mMin" type="number" value="${p.min}" class="mt-1 w-full border rounded-xl px-3 py-2.5"></label>
+            <label class="col-span-2 text-xs font-bold">Código de barras<input id="mBarcode" value="${esc(p.barcode)}" class="mt-1 w-full border rounded-xl px-3 py-2.5"></label></div>
+            <button onclick="saveProduct(${id||0})" class="mt-5 w-full bg-brand-600 text-white font-bold py-3 rounded-xl">Salvar produto</button></div>`);
+        };
+        window.editProduct=id=>openProductModal(id);
+        window.saveProduct=id=>{
+            const obj={id:id||nextId(data.products),name:document.getElementById('mName').value.trim(),category:document.getElementById('mCat').value,price:Number(document.getElementById('mPrice').value)||0,stock:Number(document.getElementById('mStock').value)||0,min:Number(document.getElementById('mMin').value)||0,barcode:document.getElementById('mBarcode').value.trim()};
+            if(!obj.name)return toast('Informe o nome.','error');
+            if(id)data.products=data.products.map(p=>p.id===id?obj:p);else data.products.push(obj);
+            saveData();closeModal();refreshAll();toast('Produto salvo.');
+        };
+
+        function renderAppointments(){
+            document.getElementById('appointmentsGrid').innerHTML=data.appointments.map(a=>`
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs"><div class="flex justify-between"><span class="text-lg font-black">${a.time}</span><span class="text-xs font-bold px-2 py-1 rounded-lg ${a.status==='Em atendimento'?'bg-blue-50 text-blue-600':a.status==='Aguardando'?'bg-amber-50 text-amber-600':'bg-slate-100 text-slate-600'}">${a.status}</span></div><h4 class="font-bold mt-4">${esc(a.pet)}</h4><p class="text-xs text-slate-400">${esc(a.tutor)} • ${esc(a.service)}</p><div class="flex gap-2 mt-4"><button onclick="advanceAppointment(${a.id})" class="flex-1 bg-brand-50 text-brand-700 py-2 rounded-xl text-xs font-bold">Avançar status</button><button onclick="deleteAppointment(${a.id})" class="px-3 bg-rose-50 text-rose-600 rounded-xl">×</button></div></div>`).join('');
+        }
+        window.advanceAppointment=id=>{const a=data.appointments.find(x=>x.id===id);if(!a)return;a.status=a.status==='Agendado'?'Aguardando':a.status==='Aguardando'?'Em atendimento':a.status==='Em atendimento'?'Concluído':'Agendado';saveData();refreshAll();toast('Status atualizado.');};
+        window.deleteAppointment=id=>{data.appointments=data.appointments.filter(x=>x.id!==id);saveData();refreshAll();};
+        window.openAppointmentModal=()=>showModal(`<div class="p-6"><div class="flex justify-between mb-5"><h3 class="text-lg font-black">Novo atendimento</h3><button onclick="closeModal()">✕</button></div><div class="space-y-3"><input id="aTutor" placeholder="Tutor" class="w-full border rounded-xl px-3 py-2.5"><input id="aPet" placeholder="Pet" class="w-full border rounded-xl px-3 py-2.5"><input id="aTime" type="time" class="w-full border rounded-xl px-3 py-2.5"><input id="aService" placeholder="Serviço" value="Banho" class="w-full border rounded-xl px-3 py-2.5"></div><button onclick="saveAppointment()" class="mt-5 w-full bg-brand-600 text-white font-bold py-3 rounded-xl">Agendar</button></div>`);
+        window.saveAppointment=()=>{const a={id:nextId(data.appointments),time:document.getElementById('aTime').value||'09:00',tutor:document.getElementById('aTutor').value||'Cliente',pet:document.getElementById('aPet').value||'Pet',service:document.getElementById('aService').value||'Banho',status:'Agendado'};data.appointments.push(a);saveData();closeModal();refreshAll();toast('Atendimento agendado.');};
+
+        function renderClients(){
+            const q=(document.getElementById('clientSearch')?.value||'').toLowerCase();
+            document.getElementById('clientsTableBody').innerHTML=data.clients.filter(c=>(c.tutor+' '+c.pet).toLowerCase().includes(q)).map(c=>`<tr><td class="px-5 py-3 font-semibold">${esc(c.tutor)}</td><td class="px-5 py-3">${esc(c.pet)}</td><td class="px-5 py-3">${esc(c.phone)}</td><td class="px-5 py-3">${esc(c.last)}</td><td class="px-5 py-3 text-right flex justify-end gap-2"><button onclick="openClientHistory(${c.id})" class="text-brand-600 font-bold">Ficha</button><button onclick="openWhatsApp('${String(c.phone||'').replace(/\D/g,'')}','Olá ${esc(c.tutor)}! Como podemos ajudar com o ${esc(c.pet)}?')" class="text-emerald-600 font-bold">WhatsApp</button><button onclick="deleteClient(${c.id})" class="text-rose-500 font-bold">Excluir</button></td></tr>`).join('');
+        }
+        window.openClientModal=()=>showModal(`<div class="p-6"><div class="flex justify-between mb-5"><h3 class="text-lg font-black">Novo tutor</h3><button onclick="closeModal()">✕</button></div><div class="space-y-3"><input id="cTutor" placeholder="Nome do tutor" class="w-full border rounded-xl px-3 py-2.5"><input id="cPet" placeholder="Nome do pet" class="w-full border rounded-xl px-3 py-2.5"><input id="cPhone" placeholder="Telefone" class="w-full border rounded-xl px-3 py-2.5"><div class="grid grid-cols-2 gap-3"><input id="cType" placeholder="Tipo (cão/gato)" class="border rounded-xl px-3 py-2.5"><input id="cBreed" placeholder="Raça" class="border rounded-xl px-3 py-2.5"><input id="cBirth" type="date" class="border rounded-xl px-3 py-2.5"><input id="cWeight" type="number" step=".1" placeholder="Peso kg" class="border rounded-xl px-3 py-2.5"></div></div><button onclick="saveClient()" class="mt-5 w-full bg-brand-600 text-white font-bold py-3 rounded-xl">Cadastrar</button></div>`);
+        window.saveClient=()=>{const c={id:nextId(data.clients),tutor:document.getElementById('cTutor').value||'Novo tutor',pet:document.getElementById('cPet').value||'Pet',phone:document.getElementById('cPhone').value||'',last:today(),petType:document.getElementById('cType')?.value||'',breed:document.getElementById('cBreed')?.value||'',birth:document.getElementById('cBirth')?.value||'',weight:Number(document.getElementById('cWeight')?.value)||0};data.clients.push(c);audit('CRIAR_CLIENTE',`${c.tutor} / ${c.pet}`);saveData();closeModal();refreshAll();toast('Cliente cadastrado.');};
+        window.deleteClient=id=>{if(confirm('Excluir este cliente?')){data.clients=data.clients.filter(x=>x.id!==id);saveData();refreshAll();}};
+
+        function renderDashboard(){
+            const revenue=data.sales.reduce((s,x)=>s+x.total,0);
+            document.getElementById('dashTotalToday').textContent=money(revenue);
+            document.getElementById('dashSalesCount').textContent=data.sales.length;
+            const pending=data.appointments.filter(a=>a.status!=='Concluído').length;
+            document.getElementById('dashAppointmentsCount').textContent=data.appointments.length;
+            document.getElementById('dashPendingAppointments').textContent=`${pending} aguardando`;
+            document.getElementById('dashLowStockCount').textContent=data.products.filter(p=>p.stock<=p.min).length;
+            document.getElementById('dashRecentSalesList').innerHTML=data.sales.slice(0,5).map(s=>`<div class="flex justify-between items-center"><div><div class="text-xs font-bold">Venda #${s.id}</div><div class="text-[10px] text-slate-400">${new Date(s.date).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} • ${s.payment}</div></div><strong class="text-xs">${money(s.total)}</strong></div>`).join('')||'<div class="text-xs text-slate-400">Nenhuma venda registrada.</div>';
+            renderWeeklyChart();
+        }
+
+        function renderWeeklyChart(){
+            if(typeof Chart==='undefined')return;
+            const labels=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+            const vals=labels.map((_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));return data.sales.filter(s=>new Date(s.date).toDateString()===d.toDateString()).reduce((a,b)=>a+b.total,0)});
+            if(weeklyChart)weeklyChart.destroy();
+            weeklyChart=new Chart(document.getElementById('chartWeeklySales'),{type:'line',data:{labels,datasets:[{label:'Faturamento',data:vals,tension:.35,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>'R$ '+v}}}}});
+        }
+
+        let paymentChart=null;
+
+        function renderReports(){
+            const gross=data.sales.reduce((s,x)=>s+(Number(x.subtotal)||0),0);
+            const discounts=data.sales.reduce((s,x)=>s+(Number(x.discount)||0),0);
+            const net=data.sales.reduce((s,x)=>s+(Number(x.total)||0),0);
+            const count=data.sales.length;
+            const expenses=(data.expenses||[]).reduce((s,x)=>s+(Number(x.value)||0),0);
+            const cmv=data.sales.reduce((s,x)=>s+(Number(x.cmv)||0),0);
+            const grossProfit=net-cmv;
+            const margin=net?grossProfit/net*100:0;
+            document.getElementById('reportRevenue').textContent=money(gross);
+            document.getElementById('reportDiscounts').textContent=money(discounts);
+            document.getElementById('reportNetRevenue').textContent=money(net);
+            document.getElementById('reportSales').textContent=count;
+            document.getElementById('reportAverage').textContent=money(count?net/count:0);
+            document.getElementById('reportCMV').textContent=money(cmv);
+            document.getElementById('reportMargin').textContent=`${margin.toFixed(2)}%`;
+            document.getElementById('dreGross').textContent=money(gross);
+            document.getElementById('dreDiscounts').textContent=money(discounts);
+            document.getElementById('dreNet').textContent=money(net);
+            if(document.getElementById('dreCmv')) document.getElementById('dreCmv').textContent=money(cmv);
+            if(document.getElementById('dreGrossProfit')) document.getElementById('dreGrossProfit').textContent=money(grossProfit);
+            if(document.getElementById('dreMargin')) document.getElementById('dreMargin').textContent=`${margin.toFixed(2)}%`;
+            document.getElementById('dreExpenses').textContent=money(expenses);
+            document.getElementById('dreResult').textContent=money(grossProfit-expenses);
+
+            document.getElementById('reportSalesList').innerHTML=data.sales.slice(0,30).map(s=>`<div class="flex justify-between border-b py-2"><span class="text-xs">Venda #${s.id} • ${esc(s.payment)} • ${new Date(s.date).toLocaleString('pt-BR')}</span><b class="text-xs">${money(s.total)}</b></div>`).join('')||'<span class="text-sm text-slate-400">Nenhuma venda.</span>';
+
+            document.getElementById('expenseList').innerHTML=(data.expenses||[]).slice().reverse().map((e,i)=>`<div class="flex justify-between items-center border-b py-2"><div><div class="text-xs font-bold">${esc(e.description)}</div><div class="text-[10px] text-slate-400">${new Date(e.date).toLocaleDateString('pt-BR')}</div></div><div class="flex items-center gap-2"><b class="text-xs">${money(e.value)}</b><button onclick="removeExpense(${e.id})" class="text-rose-500">×</button></div></div>`).join('')||'<div class="text-xs text-slate-400">Nenhuma despesa cadastrada.</div>';
+
+            const productMap={};
+            data.sales.forEach(s=>s.items?.forEach(i=>{
+                const p=data.products.find(x=>x.id===i.productId);
+                if(p)productMap[p.name]=(productMap[p.name]||0)+i.qty;
+            }));
+            const top=Object.entries(productMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+            document.getElementById('reportTopProducts').innerHTML=top.map(([name,qty])=>`<div class="flex justify-between text-xs border-b py-2"><span>${esc(name)}</span><b>${qty} un.</b></div>`).join('')||'<span class="text-xs text-slate-400">Ainda não há vendas.</span>';
+
+            const low=data.products.filter(p=>p.stock<=p.min).length;
+            const appointments=data.appointments.length;
+            const completed=data.appointments.filter(a=>a.status==='Concluído').length;
+            document.getElementById('reportBusinessIndicators').innerHTML=[
+                ['Clientes',data.clients.length],
+                ['Produtos',data.products.length],
+                ['Estoque crítico',low],
+                ['Atendimentos',appointments],
+                ['Concluídos',completed],
+                ['Despesas',money(expenses)]
+            ].map(([k,v])=>`<div class="bg-slate-50 rounded-xl p-3"><div class="text-[10px] text-slate-400">${k}</div><div class="font-black text-sm mt-1">${v}</div></div>`).join('');
+
+            if(typeof Chart!=='undefined'){
+                const labels=[],values=[];
+                for(let i=29;i>=0;i--){
+                    const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()-i);
+                    labels.push(d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}));
+                    values.push(data.sales.filter(s=>{const sd=new Date(s.date);return sd.toDateString()===d.toDateString()}).reduce((a,b)=>a+b.total,0));
+                }
+                if(financeChart)financeChart.destroy();
+                financeChart=new Chart(document.getElementById('chartFinance'),{type:'line',data:{labels,datasets:[{label:'Receita líquida',data:values,tension:.35,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>'R$ '+v}}}}});
+
+                const payments={};
+                data.sales.forEach(s=>payments[s.payment]=(payments[s.payment]||0)+s.total);
+                if(paymentChart)paymentChart.destroy();
+                paymentChart=new Chart(document.getElementById('chartPayment'),{type:'doughnut',data:{labels:Object.keys(payments),datasets:[{data:Object.values(payments)}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+            }
+        }
+
+        window.addExpense=()=>{
+            const description=document.getElementById('expenseDescription').value.trim();
+            const value=Number(document.getElementById('expenseValue').value)||0;
+            if(!description||value<=0)return toast('Informe descrição e valor da despesa.','error');
+            data.expenses=data.expenses||[];
+            data.expenses.push({id:nextId(data.expenses),description,value,date:new Date().toISOString()});
+            document.getElementById('expenseDescription').value='';
+            document.getElementById('expenseValue').value='';
+            saveData();renderReports();toast('Despesa cadastrada.');
+        };
+
+        window.removeExpense=id=>{
+            data.expenses=(data.expenses||[]).filter(x=>x.id!==id);
+            audit('REMOVER_DESPESA',`ID ${id}`);
+            saveData();renderReports();toast('Despesa removida.','warning');
+        };
+
+        window.exportReportCSV=()=>{
+            const rows=[['ID','Data','Pagamento','Subtotal','Desconto','Total','CMV','Lucro Bruto','Margem %']];
+            data.sales.forEach(s=>rows.push([s.id,new Date(s.date).toLocaleString('pt-BR'),s.payment,s.subtotal,s.discount,s.total,s.cmv||0,s.grossProfit??(s.total-(s.cmv||0)),s.total?(((s.total-(s.cmv||0))/s.total)*100).toFixed(2):0]));
+            const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(';')).join('\n');
+            const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+            const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='petflow-vendas.csv';a.click();URL.revokeObjectURL(a.href);
+        };
+
+
+        function renderCash(){
+            const c=data.cash||defaultData.cash;
+            const salesMoney=data.sales.filter(s=>s.payment==='Dinheiro' && (!c.openedAt || new Date(s.date)>=new Date(c.openedAt))).reduce((a,b)=>a+b.total,0);
+            const movements=(c.movements||[]).filter(m=>m.type!=='VENDA').reduce((a,b)=>a+(m.type==='SUPRIMENTO'?b.value:-b.value),0);
+            const expected=(Number(c.opening)||0)+salesMoney+movements;
+            document.getElementById('cashOpening').textContent=money(c.opening);
+            document.getElementById('cashMoneySales').textContent=money(salesMoney);
+            document.getElementById('cashMovements').textContent=money(movements);
+            document.getElementById('cashExpected').textContent=money(expected);
+            document.getElementById('cashStatusCard').innerHTML=c.opened
+                ? `<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><span class="text-xs text-emerald-600 font-bold">● CAIXA ABERTO</span><h4 class="text-xl font-black mt-1">${esc(c.openedBy||'Operador')}</h4><p class="text-xs text-slate-400">Abertura: ${c.openedAt?new Date(c.openedAt).toLocaleString('pt-BR'):'-'}</p></div><button onclick="openCashMovementModal('suprimento')" class="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-xs">Adicionar movimento</button></div>`
+                : `<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><span class="text-xs text-rose-600 font-bold">● CAIXA FECHADO</span><p class="text-sm text-slate-500 mt-1">Abra o caixa antes de registrar movimentos em dinheiro.</p></div><button onclick="openOpenCashModal()" class="px-5 py-2.5 bg-brand-600 text-white rounded-xl font-bold text-sm">Abrir caixa</button></div>`;
+            document.getElementById('cashMovementList').innerHTML=(c.movements||[]).slice().reverse().map(m=>`<div class="flex justify-between border-b py-2 text-xs"><div><b>${esc(m.type)}</b> • ${esc(m.ref||'')}</div><strong class="${m.type==='SANGRIA'?'text-rose-600':'text-emerald-600'}">${m.type==='SANGRIA'?'-':''}${money(m.value)}</strong></div>`).join('')||'<span class="text-xs text-slate-400">Nenhuma movimentação.</span>';
+        }
+        window.openOpenCashModal=()=>{
+            if(data.cash.opened)return toast('O caixa já está aberto.','warning');
+            showModal(`<div class="p-6"><h3 class="text-lg font-black mb-4">Abrir caixa</h3><label class="text-xs font-bold">Valor inicial<input id="cashOpeningInput" type="number" step=".01" min="0" value="200" class="mt-1 w-full border rounded-xl px-3 py-2.5"></label><button onclick="openCash()" class="mt-5 w-full bg-brand-600 text-white rounded-xl py-3 font-bold">Abrir turno</button></div>`);
+        };
+        window.openCash=()=>{
+            const opening=Math.max(0,Number(document.getElementById('cashOpeningInput').value)||0);
+            data.cash={...defaultData.cash,opened:true,opening,openedAt:new Date().toISOString(),openedBy:currentUser?.name||'Operador',movements:[]};
+            audit('ABERTURA_CAIXA',`Abertura ${money(opening)}`);saveData();closeModal();refreshAll();toast('Caixa aberto.');
+        };
+        window.openCashMovementModal=(type)=>{
+            if(!data.cash.opened)return toast('Abra o caixa primeiro.','error');
+            showModal(`<div class="p-6"><h3 class="text-lg font-black mb-4">${type==='sangria'?'Sangria':'Suprimento'}</h3><input id="cashMoveValue" type="number" step=".01" min="0" placeholder="Valor" class="w-full border rounded-xl px-3 py-2.5"><input id="cashMoveRef" placeholder="Motivo / referência" class="mt-3 w-full border rounded-xl px-3 py-2.5"><button onclick="saveCashMovement('${type}')" class="mt-5 w-full bg-brand-600 text-white rounded-xl py-3 font-bold">Registrar</button></div>`);
+        };
+        window.saveCashMovement=(type)=>{
+            const value=Math.max(0,Number(document.getElementById('cashMoveValue').value)||0);
+            if(!value)return toast('Informe um valor.','error');
+            data.cash.movements.push({id:nextId(data.cash.movements),date:new Date().toISOString(),type:type==='sangria'?'SANGRIA':'SUPRIMENTO',value,ref:document.getElementById('cashMoveRef').value.trim(),user:currentUser?.name||'Sistema'});
+            audit(type==='sangria'?'SANGRIA':'SUPRIMENTO',`${money(value)} | ${document.getElementById('cashMoveRef').value.trim()}`);
+            saveData();closeModal();refreshAll();toast('Movimento registrado.');
+        };
+        window.openCloseCashModal=()=>{
+            if(!data.cash.opened)return toast('O caixa está fechado.','warning');
+            const salesMoney=data.sales.filter(s=>s.payment==='Dinheiro' && new Date(s.date)>=new Date(data.cash.openedAt)).reduce((a,b)=>a+b.total,0);
+            const movements=(data.cash.movements||[]).reduce((a,b)=>a+(b.type==='SUPRIMENTO'?b.value:-b.value),0);
+            const expected=(Number(data.cash.opening)||0)+salesMoney+movements;
+            showModal(`<div class="p-6"><h3 class="text-lg font-black mb-2">Fechar caixa</h3><p class="text-sm text-slate-500 mb-4">Valor esperado: <b>${money(expected)}</b></p><input id="cashClosingInput" type="number" step=".01" min="0" placeholder="Valor contado" class="w-full border rounded-xl px-3 py-2.5"><button onclick="closeCash(${expected})" class="mt-5 w-full bg-brand-600 text-white rounded-xl py-3 font-bold">Conferir e fechar</button></div>`);
+        };
+        window.closeCash=(expected)=>{
+            const closing=Math.max(0,Number(document.getElementById('cashClosingInput').value)||0);
+            data.cash.closing=closing;data.cash.difference=closing-expected;data.cash.closedAt=new Date().toISOString();data.cash.opened=false;
+            audit('FECHAMENTO_CAIXA',`Esperado ${money(expected)} | Contado ${money(closing)} | Diferença ${money(closing-expected)}`);
+            saveData();closeModal();refreshAll();toast(`Caixa fechado. Diferença: ${money(closing-expected)}`,'warning');
+        };
+
+        window.openWhatsApp=(phone,message)=>{
+            const p=String(phone||'').replace(/\D/g,'');
+            if(!p)return toast('Cliente sem telefone cadastrado.','warning');
+            window.open(`https://wa.me/${p}?text=${encodeURIComponent(message||'Olá!')}`,'_blank','noopener');
+        };
+        window.openClientHistory=id=>{
+            const c=data.clients.find(x=>x.id===id);if(!c)return;
+            const sales=data.sales.filter(s=>s.items?.some(i=>data.products.some(p=>p.id===i.productId))).slice(0,20);
+            showModal(`<div class="p-6"><div class="flex justify-between"><div><h3 class="text-lg font-black">${esc(c.pet)} • ${esc(c.tutor)}</h3><p class="text-xs text-slate-400">${esc(c.petType||'')} ${c.breed?'• '+esc(c.breed):''} ${c.weight?'• '+c.weight+' kg':''}</p></div><button onclick="closeModal()">✕</button></div><div class="mt-5 grid grid-cols-2 gap-3 text-xs"><div class="bg-slate-50 rounded-xl p-3"><b>Telefone</b><br>${esc(c.phone)}</div><div class="bg-slate-50 rounded-xl p-3"><b>Nascimento</b><br>${esc(c.birth||'Não informado')}</div></div><div class="mt-5 p-4 rounded-xl bg-brand-50 text-sm"><b>Histórico</b><p class="text-xs text-slate-500 mt-1">Última visita: ${esc(c.last||'-')}</p><p class="text-xs text-slate-500">O histórico detalhado será vinculado às vendas/serviços quando o cadastro de vínculo for ampliado.</p></div></div>`);
+        };
+
+        window.openUserModal=()=>{
+            if(!can('Administrador'))return toast('Somente administradores podem gerenciar usuários.','error');
+            showModal(`<div class="p-6"><h3 class="text-lg font-black mb-4">Novo usuário</h3><div class="space-y-3"><input id="uName" placeholder="Nome" class="w-full border rounded-xl px-3 py-2.5"><input id="uLogin" placeholder="Login" class="w-full border rounded-xl px-3 py-2.5"><input id="uPass" type="password" placeholder="Senha" class="w-full border rounded-xl px-3 py-2.5"><select id="uRole" class="w-full border rounded-xl px-3 py-2.5"><option>Vendedor</option><option>Gerente</option><option>Administrador</option></select></div><button onclick="saveUser()" class="mt-5 w-full bg-brand-600 text-white rounded-xl py-3 font-bold">Criar usuário</button></div>`);
+        };
+        window.saveUser=async()=>{
+            if(!can('Administrador'))return;
+            const name=document.getElementById('uName').value.trim(),login=document.getElementById('uLogin').value.trim(),pass=document.getElementById('uPass').value,role=document.getElementById('uRole').value;
+            if(!name||!login||!pass)return toast('Preencha todos os campos.','error');
+            if(data.users.some(u=>u.login.toLowerCase()===login.toLowerCase()))return toast('Login já cadastrado.','error');
+            data.users.push({id:nextId(data.users),name,login,role,passwordHash:await sha256(pass)});
+            audit('CRIAR_USUARIO',`${login} / ${role}`);saveData();closeModal();refreshAll();toast('Usuário criado.');
+        };
+        function renderUsersAndAudit(){
+            const ul=document.getElementById('userList');
+            if(ul)ul.innerHTML=data.users.map(u=>`<div class="flex justify-between items-center border rounded-xl p-3 text-xs"><div><b>${esc(u.name)}</b><div class="text-slate-400">${esc(u.login)} • ${esc(u.role)}</div></div>${can('Administrador')&&u.id!==currentUser?.id?`<button onclick="deleteUser(${u.id})" class="text-rose-500 font-bold">Excluir</button>`:''}</div>`).join('');
+            const al=document.getElementById('auditList');
+            if(al)al.innerHTML=(data.audit||[]).slice(0,100).map(a=>`<div class="border-b py-2 text-xs"><b>${new Date(a.date).toLocaleString('pt-BR')}</b> • ${esc(a.user)} • ${esc(a.action)}<div class="text-slate-400">${esc(a.details||'')}</div></div>`).join('')||'<span class="text-xs text-slate-400">Nenhum evento.</span>';
+        }
+        window.deleteUser=id=>{
+            if(!can('Administrador'))return;
+            if(id===currentUser?.id)return toast('Não é possível excluir o usuário atual.','warning');
+            if(confirm('Excluir usuário?')){data.users=data.users.filter(u=>u.id!==id);audit('EXCLUIR_USUARIO',`ID ${id}`);saveData();refreshAll();}
+        };
+        window.exportAuditCSV=()=>{
+            const rows=[['Data','Usuário','Perfil','Ação','Detalhes'],...(data.audit||[]).map(a=>[new Date(a.date).toLocaleString('pt-BR'),a.user,a.role,a.action,a.details||''])];
+            const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(';')).join('\n');
+            const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='petflow-auditoria.csv';a.click();URL.revokeObjectURL(a.href);
+        };
+        window.importData=file=>{
+            if(!file)return;
+            const reader=new FileReader();
+            reader.onload=()=>{
+                try{
+                    const imported=JSON.parse(reader.result);
+                    if(!imported || !Array.isArray(imported.products) || !Array.isArray(imported.sales))throw new Error('Formato inválido');
+                    if(!confirm('Importar este backup substituirá os dados atuais. Continuar?'))return;
+                    data={...structuredClone(defaultData),...imported,settings:{...defaultData.settings,...(imported.settings||{})},cash:{...defaultData.cash,...(imported.cash||{})}};
+                    audit('IMPORTAR_BACKUP','Backup JSON importado');
+                    saveData();refreshAll();toast('Backup importado com sucesso.');
+                }catch(e){toast('Backup inválido ou corrompido.','error');}
+            };
+            reader.readAsText(file);
+        };
+        window.installPWA=async()=>{
+            if(window.deferredInstallPrompt){window.deferredInstallPrompt.prompt();await window.deferredInstallPrompt.userChoice;window.deferredInstallPrompt=null;}
+            else toast('Se o navegador oferecer a instalação, use o ícone de instalação na barra de endereço.','warning');
+        };
+
+
+        window.openStockEntryModal=()=>{
+            if(!can('Gerente'))return toast('Seu perfil não pode movimentar estoque.','error');
+            showModal(`<div class="p-6"><h3 class="text-lg font-black mb-4">Entrada de estoque</h3><select id="entryProduct" class="w-full border rounded-xl px-3 py-2.5">${data.products.map(p=>`<option value="${p.id}">${esc(p.name)} — atual: ${p.stock}</option>`).join('')}</select><input id="entryQty" type="number" min="1" step="1" placeholder="Quantidade" class="mt-3 w-full border rounded-xl px-3 py-2.5"><input id="entryCost" type="number" min="0" step=".01" placeholder="Custo unitário (opcional)" class="mt-3 w-full border rounded-xl px-3 py-2.5"><input id="entryRef" placeholder="Fornecedor / NF / referência" class="mt-3 w-full border rounded-xl px-3 py-2.5"><button onclick="saveStockEntry()" class="mt-5 w-full bg-brand-600 text-white rounded-xl py-3 font-bold">Registrar entrada</button></div>`);
+        };
+        window.saveStockEntry=()=>{
+            const id=Number(document.getElementById('entryProduct').value),qty=Math.max(0,Number(document.getElementById('entryQty').value)||0),cost=Number(document.getElementById('entryCost').value),ref=document.getElementById('entryRef').value.trim();
+            const p=data.products.find(x=>x.id===id);if(!p||!qty)return toast('Selecione o produto e informe a quantidade.','error');
+            const before=p.stock;p.stock+=qty;if(Number.isFinite(cost)&&cost>0)p.cost=cost;
+            data.stockMoves.unshift({id:nextId(data.stockMoves),date:new Date().toISOString(),productId:id,type:'ENTRADA',qty,before,after:p.stock,cost:p.cost,ref,user:currentUser?.name||'Sistema'});
+            audit('ENTRADA_ESTOQUE',`${p.name} +${qty} | custo ${money(p.cost)} | ${ref}`);
+            saveData();closeModal();refreshAll();toast('Entrada registrada.');
+        };
+
+        function refreshAll(){
+            renderPdvProducts();renderCart();renderStock();renderAppointments();renderClients();renderDashboard();renderReports();renderCash();renderUsersAndAudit();
+            document.getElementById('configCompany').value=data.settings.company||'PetFlow Pro';
+            document.getElementById('configTerminal').value=data.settings.terminal||'Caixa #01';
+            document.getElementById('configPixType').value=data.settings.pixKeyType||'CNPJ';
+            document.getElementById('configPixKey').value=data.settings.pixKey||'';
+            document.getElementById('configPixMerchant').value=data.settings.pixMerchantName||data.settings.company||'PetFlow Pro';
+            document.getElementById('configPixCity').value=data.settings.pixCity||'SAO PAULO';
+            document.getElementById('pixConfigStatus').textContent=data.settings.pixKey?'✓ Chave PIX configurada. QR Code disponível no fechamento.':'⚠ Configure uma chave PIX para habilitar o QR Code.';
+            const pwaBtn=document.getElementById('installPwaBtn'); if(pwaBtn)pwaBtn.classList.toggle('hidden',!window.deferredInstallPrompt);
+        }
+        function showModal(html){const root=document.getElementById('modalRoot');document.getElementById('modalCard').innerHTML=html;root.classList.remove('hidden');root.classList.add('flex');}
+        window.closeModal=()=>{const root=document.getElementById('modalRoot');root.classList.add('hidden');root.classList.remove('flex');};
+        window.saveSettings=()=>{
+            data.settings.company=document.getElementById('configCompany').value.trim()||'PetFlow Pro';
+            data.settings.terminal=document.getElementById('configTerminal').value.trim()||'Caixa #01';
+            data.settings.pixKeyType=document.getElementById('configPixType').value;
+            data.settings.pixKey=document.getElementById('configPixKey').value.trim();
+            data.settings.pixMerchantName=document.getElementById('configPixMerchant').value.trim()||data.settings.company;
+            data.settings.pixCity=document.getElementById('configPixCity').value.trim()||'SAO PAULO';
+            audit('ALTERAR_CONFIGURACOES',`Empresa ${data.settings.company} | Terminal ${data.settings.terminal}`);
+            saveData();refreshAll();toast('Configurações salvas.');
+        };
+        window.exportData=()=>{const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='petflow-backup.json';a.click();URL.revokeObjectURL(a.href);};
+        window.clearLocalData=()=>{if(confirm('Isso apagará os dados deste navegador. Continuar?')){localStorage.removeItem(STORAGE_KEY);data=loadData();refreshAll();toast('Dados restaurados.','warning');}};
+        document.getElementById('modalRoot').addEventListener('click',e=>{if(e.target.id==='modalRoot')closeModal();});
+        document.addEventListener('keydown',e=>{if(e.key==='F2'){e.preventDefault();switchView('pdv');document.getElementById('pdvSearchInput')?.focus();}if(e.key==='Escape')closeModal();});
+        setInterval(()=>{document.getElementById('clockDisplay').textContent=new Date().toLocaleTimeString('pt-BR');},1000);
+        window.addEventListener('offline',()=>document.body.classList.add('offline'));
+        window.addEventListener('online',()=>{document.body.classList.remove('offline');toast('Conexão restabelecida.');});
+        let deferredInstallPrompt=null;
+        window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;window.deferredInstallPrompt=e;});
+        window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;window.deferredInstallPrompt=null;toast('PetFlow instalado no dispositivo.');});
+        if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));}
+        document.addEventListener('DOMContentLoaded',()=>{
+            const raw=sessionStorage.getItem('petflow_logged');
+            if(raw){
+                try{
+                    const sess=JSON.parse(raw);
+                    currentUser=data.users.find(u=>u.id===sess.id)||null;
+                    if(currentUser){document.getElementById('sessionUserName').textContent=currentUser.name;document.getElementById('loginScreen').classList.add('hidden');}
+                }catch(_){}
+            }
+            if(!currentUser) document.getElementById('loginScreen').classList.remove('hidden');
+            switchView('dashboard');
+            refreshAll();
+        });
+    })();
+    </script>
+</body>
+</html>
